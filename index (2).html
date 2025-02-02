@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot IA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        #chatbox {
+            width: 350px;
+            height: 500px;
+            border: 2px solid #007bff;
+            border-radius: 10px;
+            overflow-y: auto;
+            background-color: white;
+            padding: 10px;
+        }
+        #chatbox p {
+            margin: 5px 0;
+        }
+        #input-container {
+            display: flex;
+            margin-top: 10px;
+        }
+        #message {
+            flex-grow: 1;
+            padding: 5px;
+        }
+        #send {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        #voice {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div>
+        <div id="chatbox">
+            <p><b>Bot :</b> Bonjour ! Pose-moi une question. 😊</p>
+        </div>
+        <div id="input-container">
+            <input type="text" id="message" placeholder="Écrivez un message...">
+            <button id="send">Envoyer</button>
+            <button id="voice">🎤</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const chatContainer = document.getElementById("chatbox");
+            const userInput = document.getElementById("message");
+            const sendButton = document.getElementById("send");
+            const voiceButton = document.getElementById("voice");
+
+            const responses = {
+                // ... (ton objet de réponses reste inchangé)
+            };
+
+            sendButton.addEventListener("click", sendMessage);
+            userInput.addEventListener("keypress", function(event) {
+                if (event.key === "Enter") sendMessage();
+            });
+            voiceButton.addEventListener("mousedown", startVoiceRecognition);
+            voiceButton.addEventListener("mouseup", stopVoiceRecognition);
+            voiceButton.addEventListener("mouseleave", stopVoiceRecognition);
+
+            let recognition;
+
+            function displayMessage(sender, message) {
+                const messageElement = document.createElement("p");
+                messageElement.innerHTML = `<b>${sender}:</b> ${message}`;
+                chatContainer.appendChild(messageElement);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            function sendMessage() {
+                const userMessage = userInput.value.trim().toLowerCase();
+                if (userMessage === "") return;
+
+                displayMessage("User", userMessage);
+                userInput.value = "";
+
+                let botResponse = findBestMatch(userMessage, responses) || "Je ne comprends pas. Pouvez-vous reformuler ?";
+                displayMessage("Bot", botResponse);
+                speak(botResponse);
+            }
+
+            function startVoiceRecognition() {
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'fr-FR';
+                recognition.start();
+
+                recognition.onresult = function(event) {
+                    const userMessage = event.results[0][0].transcript.toLowerCase();
+                    displayMessage("User", userMessage);
+
+                    let botResponse = findBestMatch(userMessage, responses) || "Je ne comprends pas. Pouvez-vous reformuler ?";
+                    displayMessage("Bot", botResponse);
+                    speak(botResponse);
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Erreur de reconnaissance vocale:', event.error);
+                    stopVoiceRecognition();  // Arrêter la reconnaissance en cas d'erreur
+                };
+            }
+
+            function stopVoiceRecognition() {
+                if (recognition) {
+                    recognition.stop();
+                }
+            }
+
+            function speak(text) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'fr-FR';
+                window.speechSynthesis.speak(utterance);
+            }
+
+            function levenshteinDistance(s1, s2) {
+                let m = s1.length, n = s2.length;
+                let dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+                for (let i = 0; i <= m; i++) dp[i][0] = i;
+                for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+                for (let i = 1; i <= m; i++) {
+                    for (let j = 1; j <= n; j++) {
+                        let cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+                    }
+                }
+                return dp[m][n];
+            }
+
+            function findBestMatch(input, dataset) {
+                let closestMatch = null;
+                let smallestDistance = Infinity;
+
+                for (let key in dataset) {
+                    let distance = levenshteinDistance(input, key);
+                    if (distance < smallestDistance) {
+                        smallestDistance = distance;
+                        closestMatch = key;
+                    }
+                }
+
+                return closestMatch ? dataset[closestMatch] : null;
+            }
+        });
+    </script>
+
+</body>
+</html>
